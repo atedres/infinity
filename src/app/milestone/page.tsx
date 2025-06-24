@@ -1,0 +1,113 @@
+import { SubpageLayout } from "@/components/layout/subpage-layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { BookOpen, Target, CheckCircle2 } from "lucide-react";
+
+const deadlines = [
+    { task: "User Authentication Flow", due: "3 days", status: "In Progress" },
+    { task: "Payment Gateway Integration", due: "1 week", status: "Not Started" },
+    { task: "Mobile App Beta Release", due: "3 weeks", status: "Not Started" },
+];
+
+const courses = [
+    { title: "Startup Funding 101", description: "Learn the fundamentals of raising capital." },
+    { title: "Agile Project Management", description: "Master the scrum framework for faster delivery." },
+    { title: "Growth Hacking Strategies", description: "Discover unconventional marketing techniques." },
+]
+
+export default function MilestonePage() {
+    return (
+        <SubpageLayout title="Milestone Dashboard">
+            <div className="grid gap-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Advancement</CardTitle>
+                        <CardDescription>Your project is currently 75% complete.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Progress value={75} className="w-full" />
+                    </CardContent>
+                </Card>
+
+                <div className="grid gap-8 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
+                            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">42</div>
+                            <p className="text-xs text-muted-foreground">/ 56 total tasks</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Active Sprints</CardTitle>
+                            <Target className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">2</div>
+                            <p className="text-xs text-muted-foreground">Sprint #4 and #5</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Next Milestone</CardTitle>
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                         <CardContent>
+                            <div className="text-2xl font-bold">Public Beta</div>
+                            <p className="text-xs text-muted-foreground">Scheduled for next month</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Upcoming Deadlines</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Task</TableHead>
+                                    <TableHead>Due In</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {deadlines.map(d => (
+                                    <TableRow key={d.task}>
+                                        <TableCell className="font-medium">{d.task}</TableCell>
+                                        <TableCell>{d.due}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={d.status === 'In Progress' ? 'default' : 'secondary'} className="bg-accent text-accent-foreground">{d.status}</Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+
+                <div>
+                    <h2 className="text-2xl font-headline font-semibold tracking-tight mb-4">Startup Courses</h2>
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {courses.map(course => (
+                             <Card key={course.title}>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/>{course.title}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground">{course.description}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </SubpageLayout>
+    )
+}
