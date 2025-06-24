@@ -171,6 +171,9 @@ export default function Home() {
                 case 'auth/invalid-credential':
                     description = 'Invalid email or password. Please try again.';
                     break;
+                case 'auth/unauthorized-domain':
+                    description = "This app's domain is not authorized. Please add 'localhost' to the authorized domains in your Firebase project's authentication settings.";
+                    break;
                 default:
                     description = error.message;
             }
@@ -210,6 +213,9 @@ export default function Home() {
                     break;
                 case 'auth/account-exists-with-different-credential':
                     description = 'An account already exists with this email. Please sign in using the original method.';
+                    break;
+                case 'auth/unauthorized-domain':
+                    description = "This app's domain is not authorized. Please add 'localhost' to the authorized domains in your Firebase project's authentication settings.";
                     break;
                 default:
                     description = error.message;
