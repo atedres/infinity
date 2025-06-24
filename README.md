@@ -52,9 +52,13 @@ The application will be running at [http://localhost:9002](http://localhost:9002
 
 ## Deployment
 
-To make your application accessible to everyone on the internet, you need to deploy it. This project is configured for Firebase App Hosting.
+To make your application accessible to everyone on the internet, you need to deploy it. Below are instructions for two popular services.
 
-### 1. Install Firebase CLI
+### Option 1: Deploying to Firebase App Hosting
+
+This project is configured by default for Firebase App Hosting.
+
+#### 1. Install Firebase CLI
 
 If you don't have it already, install the Firebase Command Line Interface (CLI) globally on your machine.
 
@@ -62,7 +66,7 @@ If you don't have it already, install the Firebase Command Line Interface (CLI) 
 npm install -g firebase-tools
 ```
 
-### 2. Log in to Firebase
+#### 2. Log in to Firebase
 
 Log in to your Firebase account using the CLI.
 
@@ -70,7 +74,7 @@ Log in to your Firebase account using the CLI.
 firebase login
 ```
 
-### 3. Deploy the Application
+#### 3. Deploy the Application
 
 In your project's root directory, run the following command to deploy your app:
 
@@ -80,17 +84,47 @@ firebase deploy
 
 The CLI will build your Next.js application and deploy it to Firebase App Hosting.
 
-### 4. Authorize Your Public Domain
+#### 4. Authorize Your Public Domain (Crucial Step)
 
-This is a critical final step for authentication to work on your live site.
+1.  After deployment, the Firebase CLI will give you a public URL for your application (e.g., `https://your-project.web.app`). Copy this URL.
+2.  Go to the [Firebase Console](https://console.firebase.google.com/) and open your project.
+3.  Navigate to **Build > Authentication > Settings > Authorized domains**.
+4.  Click **Add domain** and paste the public URL you copied.
 
-1.  After deployment, the Firebase CLI will give you a public URL for your application. It will look something like `https://infinity-d0fa5.web.app` or `https://infinity-d0fa5.firebaseapp.com`.
-2.  Copy this URL.
-3.  Go to the [Firebase Console](https://console.firebase.google.com/) and open your project.
-4.  Navigate to **Build > Authentication > Settings > Authorized domains**.
-5.  Click **Add domain** and paste the public URL you copied.
+### Option 2: Deploying to Vercel
 
-Once you add your live app's URL to the authorized domains, anyone will be able to visit your site and sign up or log in.
+Vercel is another excellent platform for deploying Next.js applications.
+
+#### 1. Push Your Project to GitHub
+
+If you haven't already, push your project to a GitHub repository. Vercel works best by linking directly to a Git repository.
+
+#### 2. Create a Vercel Project
+
+1.  Sign up or log in to your [Vercel account](https://vercel.com).
+2.  From your dashboard, click **Add New... > Project**.
+3.  Import the GitHub repository you created in the previous step.
+
+#### 3. Configure Environment Variables
+
+Vercel needs access to your Firebase configuration.
+1.  In your Vercel project settings, go to **Settings > Environment Variables**.
+2.  Add all the variables from your `.env.local` file. For example:
+    *   **Name:** `NEXT_PUBLIC_FIREBASE_API_KEY`, **Value:** `your_api_key`
+    *   **Name:** `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, **Value:** `your_auth_domain`
+    *   ...and so on for all the required keys.
+
+#### 4. Deploy
+
+Once the environment variables are set, trigger a deployment from your Vercel project dashboard. Vercel will automatically detect that it's a Next.js project and build it correctly.
+
+#### 5. Authorize Your Vercel Domain (Crucial Step)
+
+This is the most important step to make sure Firebase Authentication works on your live Vercel site.
+1.  After your first successful deployment, Vercel will assign a public URL to your project (e.g., `https://your-project-name.vercel.app`). Copy this URL.
+2.  Go to the [Firebase Console](https://console.firebase.google.com/) and open your project.
+3.  Navigate to **Build > Authentication > Settings > Authorized domains**.
+4.  Click **Add domain** and paste the Vercel URL you copied.
 
 ## Available Scripts
 
