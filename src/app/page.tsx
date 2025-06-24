@@ -154,6 +154,7 @@ export default function Home() {
             }
             setIsAuthDialogOpen(false);
         } catch (error: any) {
+            console.error("Firebase Auth Error:", error);
             toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
         }
     };
@@ -182,6 +183,7 @@ export default function Home() {
             toast({ title: "Success", description: "Logged in with Google successfully!"});
             setIsAuthDialogOpen(false);
         } catch (error: any) {
+            console.error("Google Sign-In Error:", error);
             toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
         }
     };
