@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import { SubpageLayout } from "@/components/layout/subpage-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,40 +12,150 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Briefcase, Ticket } from "lucide-react";
+import { collection, addDoc, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data, in a real app this would come from a database
-const courses = [
-    { title: "Startup Funding 101", description: "Learn the fundamentals of raising capital." },
-    { title: "Agile Project Management", description: "Master the scrum framework for faster delivery." },
-    { title: "Growth Hacking Strategies", description: "Discover unconventional marketing techniques." },
-];
+// Types
+interface Course {
+    id: string;
+    title: string;
+    description: string;
+}
 
-const projects = [
-    {
-        title: "Senior Frontend Engineer",
-        startup: "InnovateAI",
-        remuneration: "Equity + Salary",
-    },
-    {
-        title: "Product Designer (UI/UX)",
-        startup: "Healthify",
-        remuneration: "Competitive Salary",
-    },
-    {
-        title: "Backend Developer (Python)",
-        startup: "ConnectSphere",
-        remuneration: "Freelance Contract",
-    },
-];
+interface Project {
+    id: string;
+    title: string;
+    startup: string;
+    remuneration: string;
+}
 
-const tickets = [
-    { id: "T-201", subject: "Update logo on login page", status: "Completed", lastUpdate: "2 days ago" },
-    { id: "T-203", subject: "Feature Request: Export data to CSV", status: "In Progress", lastUpdate: "3 hours ago" },
-    { id: "T-204", subject: "Bug: User cannot reset password", status: "Open", lastUpdate: "1 day ago" },
-];
-
+interface Ticket {
+    id: string;
+    subject: string;
+    status: string;
+    lastUpdate: any;
+}
 
 export default function AdminDashboardPage() {
+    const { toast } = useToast();
+    const [courses, setCourses] = useState<Course[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [tickets, setTickets] = useState<Ticket[]>([]);
+
+    // Form states for new course
+    const [courseTitle, setCourseTitle] = useState('');
+    const [courseDescription, setCourseDescription] = useState('');
+
+    // Form states for new project
+    const [projectTitle, setProjectTitle] = useState('');
+    const [startupName, setStartupName] = useState('');
+    const [projectDescription, setProjectDescription] = useState('');
+    const [remuneration, setRemuneration] = useState('');
+    const [skills, setSkills] = useState('');
+
+
+    const fetchCourses = async () => {
+        if (!db) return;
+        try {
+            const querySnapshot = await getDocs(collection(db, "courses"));
+            const coursesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Course[];
+            setCourses(coursesList);
+        } catch (error) {
+            console.error("Error fetching courses: ", error);
+        }
+    };
+
+    const fetchProjects = async () => {
+        if (!db) return;
+        try {
+            const querySnapshot = await getDocs(collection(db, "projects"));
+            const projectsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+            setProjects(projectsList);
+        } catch (error) {
+            console.error("Error fetching projects: ", error);
+        }
+    };
+
+    const fetchTickets = async () => {
+        if (!db) return;
+        try {
+            const querySnapshot = await getDocs(collection(db, "tickets"));
+            const ticketsList = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    subject: data.subject,
+                    status: data.status,
+                    lastUpdate: data.lastUpdate?.toDate ? data.lastUpdate.toDate().toLocaleDateString() : 'N/A',
+                }
+            }) as Ticket[];
+            setTickets(ticketsList);
+        } catch (error) {
+            console.error("Error fetching tickets: ", error);
+        }
+    };
+
+    useEffect(() => {
+        if (!db) return;
+        fetchCourses();
+        fetchProjects();
+        fetchTickets();
+    }, []);
+
+    const handleAddCourse = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!db) return;
+        if (!courseTitle || !courseDescription) {
+            toast({ title: "Error", description: "Please fill all fields.", variant: "destructive" });
+            return;
+        }
+        try {
+            await addDoc(collection(db, "courses"), {
+                title: courseTitle,
+                description: courseDescription,
+            });
+            toast({ title: "Success", description: "Course added successfully." });
+            setCourseTitle('');
+            setCourseDescription('');
+            fetchCourses(); // Refresh list
+        } catch (error) {
+            console.error("Error adding course: ", error);
+            toast({ title: "Error", description: "Failed to add course.", variant: "destructive" });
+        }
+    };
+
+    const handleAddProject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!db) return;
+        if (!projectTitle || !startupName || !projectDescription || !remuneration || !skills) {
+             toast({ title: "Error", description: "Please fill all fields.", variant: "destructive" });
+            return;
+        }
+        try {
+            await addDoc(collection(db, "projects"), {
+                title: projectTitle,
+                startup: startupName,
+                description: projectDescription,
+                remuneration: remuneration,
+                skills: skills.split(',').map(s => s.trim()),
+                logo: "https://placehold.co/40x40.png",
+                dataAiHint: "abstract geometric"
+            });
+            toast({ title: "Success", description: "Project added successfully." });
+            setProjectTitle('');
+            setStartupName('');
+            setProjectDescription('');
+            setRemuneration('');
+            setSkills('');
+            fetchProjects(); // Refresh list
+        } catch (error) {
+            console.error("Error adding project: ", error);
+            toast({ title: "Error", description: "Failed to add project.", variant: "destructive" });
+        }
+    };
+
+
     return (
         <SubpageLayout title="Admin Dashboard">
             <Tabs defaultValue="courses" className="w-full">
@@ -70,16 +181,18 @@ export default function AdminDashboardPage() {
                             <CardTitle>Upload New Course</CardTitle>
                             <CardDescription>Add a new educational course for startups.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="course-title">Course Title</Label>
-                                <Input id="course-title" placeholder="e.g., Advanced Marketing" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="course-description">Description</Label>
-                                <Textarea id="course-description" placeholder="A brief summary of the course content." />
-                            </div>
-                            <Button>Upload Course</Button>
+                        <CardContent>
+                            <form onSubmit={handleAddCourse} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="course-title">Course Title</Label>
+                                    <Input id="course-title" placeholder="e.g., Advanced Marketing" value={courseTitle} onChange={(e) => setCourseTitle(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="course-description">Description</Label>
+                                    <Textarea id="course-description" placeholder="A brief summary of the course content." value={courseDescription} onChange={(e) => setCourseDescription(e.target.value)} />
+                                </div>
+                                <Button type="submit">Upload Course</Button>
+                            </form>
                         </CardContent>
                     </Card>
                     <Card>
@@ -95,8 +208,8 @@ export default function AdminDashboardPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {courses.map((course, index) => (
-                                        <TableRow key={index}>
+                                    {courses.map((course) => (
+                                        <TableRow key={course.id}>
                                             <TableCell className="font-medium">{course.title}</TableCell>
                                             <TableCell>{course.description}</TableCell>
                                         </TableRow>
@@ -114,32 +227,34 @@ export default function AdminDashboardPage() {
                             <CardTitle>Add New Project</CardTitle>
                             <CardDescription>Post a new job opportunity for freelancers.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="project-title">Project Title</Label>
-                                    <Input id="project-title" placeholder="e.g., Senior Frontend Engineer" />
+                        <CardContent>
+                            <form onSubmit={handleAddProject} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="project-title">Project Title</Label>
+                                        <Input id="project-title" placeholder="e.g., Senior Frontend Engineer" value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="startup-name">Startup Name</Label>
+                                        <Input id="startup-name" placeholder="e.g., InnovateAI" value={startupName} onChange={(e) => setStartupName(e.target.value)} />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="startup-name">Startup Name</Label>
-                                    <Input id="startup-name" placeholder="e.g., InnovateAI" />
+                                 <div className="space-y-2">
+                                    <Label htmlFor="project-description">Description</Label>
+                                    <Textarea id="project-description" placeholder="Detailed job description..." value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} />
                                 </div>
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="project-description">Description</Label>
-                                <Textarea id="project-description" placeholder="Detailed job description..." />
-                            </div>
-                             <div className="grid grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                    <Label htmlFor="remuneration">Remuneration</Label>
-                                    <Input id="remuneration" placeholder="e.g., Equity + Salary" />
+                                 <div className="grid grid-cols-2 gap-4">
+                                   <div className="space-y-2">
+                                        <Label htmlFor="remuneration">Remuneration</Label>
+                                        <Input id="remuneration" placeholder="e.g., Equity + Salary" value={remuneration} onChange={(e) => setRemuneration(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="skills">Skills Required</Label>
+                                        <Input id="skills" placeholder="Comma-separated, e.g., React, TypeScript" value={skills} onChange={(e) => setSkills(e.target.value)} />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="skills">Skills Required</Label>
-                                    <Input id="skills" placeholder="Comma-separated, e.g., React, TypeScript" />
-                                </div>
-                            </div>
-                            <Button>Add Project</Button>
+                                <Button type="submit">Add Project</Button>
+                            </form>
                         </CardContent>
                     </Card>
                      <Card>
@@ -156,8 +271,8 @@ export default function AdminDashboardPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {projects.map((project, index) => (
-                                        <TableRow key={index}>
+                                    {projects.map((project) => (
+                                        <TableRow key={project.id}>
                                             <TableCell className="font-medium">{project.title}</TableCell>
                                             <TableCell>{project.startup}</TableCell>
                                             <TableCell>{project.remuneration}</TableCell>
@@ -189,7 +304,7 @@ export default function AdminDashboardPage() {
                                 <TableBody>
                                     {tickets.map(ticket => (
                                         <TableRow key={ticket.id}>
-                                            <TableCell className="font-mono">{ticket.id}</TableCell>
+                                            <TableCell className="font-mono">{ticket.id.substring(0,6)}...</TableCell>
                                             <TableCell className="font-medium">{ticket.subject}</TableCell>
                                             <TableCell>
                                                 <Badge

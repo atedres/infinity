@@ -1,9 +1,16 @@
+
+"use client";
+
+import { useState, useEffect } from 'react';
 import { SubpageLayout } from "@/components/layout/subpage-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Target, CheckCircle2 } from "lucide-react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 
 const deadlines = [
     { task: "User Authentication Flow", due: "3 days", status: "In Progress" },
@@ -11,13 +18,29 @@ const deadlines = [
     { task: "Mobile App Beta Release", due: "3 weeks", status: "Not Started" },
 ];
 
-const courses = [
-    { title: "Startup Funding 101", description: "Learn the fundamentals of raising capital." },
-    { title: "Agile Project Management", description: "Master the scrum framework for faster delivery." },
-    { title: "Growth Hacking Strategies", description: "Discover unconventional marketing techniques." },
-]
+interface Course {
+    id: string;
+    title: string;
+    description: string;
+}
 
 export default function MilestonePage() {
+    const [courses, setCourses] = useState<Course[]>([]);
+
+    useEffect(() => {
+        const fetchCourses = async () => {
+            if (!db) return;
+            try {
+                const querySnapshot = await getDocs(collection(db, "courses"));
+                const coursesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Course[];
+                setCourses(coursesList);
+            } catch (error) {
+                console.error("Error fetching courses: ", error);
+            }
+        };
+        fetchCourses();
+    }, []);
+
     return (
         <SubpageLayout title="Milestone Dashboard">
             <div className="grid gap-8">
@@ -96,7 +119,7 @@ export default function MilestonePage() {
                     <h2 className="text-2xl font-headline font-semibold tracking-tight mb-4">Startup Courses</h2>
                     <div className="grid gap-6 md:grid-cols-3">
                         {courses.map(course => (
-                             <Card key={course.title}>
+                             <Card key={course.id}>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary"/>{course.title}</CardTitle>
                                 </CardHeader>

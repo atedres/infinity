@@ -1,49 +1,43 @@
+
+"use client";
+
+import { useState, useEffect } from 'react';
 import Image from "next/image";
 import { SubpageLayout } from "@/components/layout/subpage-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-const projects = [
-    {
-        title: "Senior Frontend Engineer",
-        startup: "InnovateAI",
-        logo: "https://placehold.co/40x40.png",
-        description: "Join us to build the next generation of AI-powered analytics tools. We're looking for an expert in React and TypeScript.",
-        remuneration: "Equity + Salary",
-        skills: ["React", "TypeScript", "Next.js", "TailwindCSS"],
-        dataAiHint: "abstract geometric"
-    },
-    {
-        title: "Product Designer (UI/UX)",
-        startup: "Healthify",
-        logo: "https://placehold.co/40x40.png",
-        description: "Redesign the user experience of our mobile health application. A strong portfolio in mobile design is required.",
-        remuneration: "Competitive Salary",
-        skills: ["Figma", "User Research", "Prototyping"],
-        dataAiHint: "minimalist pattern"
-    },
-    {
-        title: "Backend Developer (Python)",
-        startup: "ConnectSphere",
-        logo: "https://placehold.co/40x40.png",
-        description: "Develop and maintain the core API for our social networking platform. Experience with Django and PostgreSQL is a must.",
-        remuneration: "Freelance Contract",
-        skills: ["Python", "Django", "PostgreSQL", "REST APIs"],
-        dataAiHint: "network nodes"
-    },
-    {
-        title: "DevOps Engineer",
-        startup: "SecureChain",
-        logo: "https://placehold.co/40x40.png",
-        description: "Build and manage our cloud infrastructure on AWS. Help us scale our blockchain-based security solutions securely.",
-        remuneration: "Equity + Salary",
-        skills: ["AWS", "Docker", "Kubernetes", "Terraform"],
-        dataAiHint: "server illustration"
-    }
-]
+interface Project {
+    id: string;
+    title: string;
+    startup: string;
+    logo: string;
+    description: string;
+    remuneration: string;
+    skills: string[];
+    dataAiHint: string;
+}
 
 export default function JoinProjectPage() {
+    const [projects, setProjects] = useState<Project[]>([]);
+
+    useEffect(() => {
+        const fetchProjects = async () => {
+            if (!db) return;
+            try {
+                const querySnapshot = await getDocs(collection(db, "projects"));
+                const projectsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
+                setProjects(projectsList);
+            } catch (error) {
+                console.error("Error fetching projects: ", error);
+            }
+        };
+        fetchProjects();
+    }, []);
+
     return (
         <SubpageLayout title="Join a Project">
             <div className="space-y-8">
@@ -54,7 +48,7 @@ export default function JoinProjectPage() {
                 </div>
                 <div className="grid gap-6 md:grid-cols-2">
                     {projects.map(project => (
-                        <Card key={project.title} className="flex flex-col">
+                        <Card key={project.id} className="flex flex-col">
                             <CardHeader>
                                 <div className="flex items-start gap-4">
                                     <Image

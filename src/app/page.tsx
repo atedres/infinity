@@ -1,11 +1,15 @@
 
+"use client";
+
+import { useState, useEffect } from 'react';
 import {
   Rocket,
   Briefcase,
   Mic,
   Building,
   Infinity as InfinityIcon,
-  Quote
+  Quote,
+  LogOut
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,6 +17,13 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+
 
 const features = [
   {
@@ -77,6 +88,59 @@ const stats = [
 ]
 
 export default function Home() {
+    const { toast } = useToast();
+    const [user, setUser] = useState<User | null>(null);
+    const [authAction, setAuthAction] = useState<'login' | 'signup' | null>(null);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+
+    useEffect(() => {
+        if (!auth) return;
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const handleAuthDialogOpen = (action: 'login' | 'signup') => {
+        setAuthAction(action);
+        setIsAuthDialogOpen(true);
+        setEmail('');
+        setPassword('');
+    }
+
+    const handleAuthAction = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!auth) return;
+        if (!email || !password) {
+            toast({ title: "Error", description: "Email and password are required.", variant: "destructive"});
+            return;
+        }
+        try {
+            if (authAction === 'signup') {
+                await createUserWithEmailAndPassword(auth, email, password);
+                toast({ title: "Success", description: "Account created successfully!"});
+            } else {
+                await signInWithEmailAndPassword(auth, email, password);
+                toast({ title: "Success", description: "Logged in successfully!"});
+            }
+            setIsAuthDialogOpen(false);
+        } catch (error: any) {
+            toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
+        }
+    };
+
+    const handleSignOut = async () => {
+        if (!auth) return;
+        try {
+            await signOut(auth);
+            toast({ title: "Signed Out", description: "You have been successfully signed out." });
+        } catch (error: any) {
+             toast({ title: "Error", description: error.message, variant: "destructive"});
+        }
+    };
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -89,17 +153,29 @@ export default function Home() {
               </span>
             </Link>
           </div>
-          <div className="flex flex-1 items-center justify-end space-x-4">
+          <div className="flex flex-1 items-center justify-end space-x-2">
              <nav className="flex items-center space-x-2">
                 <Button variant="outline" asChild>
                     <Link href="/admin-dashboard">Admin</Link>
                 </Button>
-                <Button variant="ghost" asChild>
-                    <Link href="#">Login</Link>
-                </Button>
-                <Button asChild>
-                    <Link href="#">Sign Up</Link>
-                </Button>
+                {user ? (
+                    <>
+                        <span className="text-sm text-muted-foreground hidden sm:inline-block">{user.email}</span>
+                        <Button variant="ghost" onClick={handleSignOut}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Logout
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button variant="ghost" onClick={() => handleAuthDialogOpen('login')}>
+                            Login
+                        </Button>
+                        <Button onClick={() => handleAuthDialogOpen('signup')}>
+                            Sign Up
+                        </Button>
+                    </>
+                )}
             </nav>
           </div>
         </div>
@@ -211,6 +287,32 @@ export default function Home() {
                 </div>
             </div>
         </section>
+
+        <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>{authAction === 'login' ? 'Login' : 'Sign Up'}</DialogTitle>
+                    <DialogDescription>
+                        {authAction === 'login' ? 'Enter your credentials to access your account.' : 'Create an account to get started.'}
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAuthAction}>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="email" className="text-right">Email</Label>
+                            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="password" className="text-right">Password</Label>
+                            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="submit">{authAction === 'login' ? 'Login' : 'Create Account'}</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
 
       </main>
       <footer className="border-t">
