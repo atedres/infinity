@@ -50,6 +50,48 @@ npm run dev
 
 The application will be running at [http://localhost:9002](http://localhost:9002).
 
+## Deployment
+
+To make your application accessible to everyone on the internet, you need to deploy it. This project is configured for Firebase App Hosting.
+
+### 1. Install Firebase CLI
+
+If you don't have it already, install the Firebase Command Line Interface (CLI) globally on your machine.
+
+```bash
+npm install -g firebase-tools
+```
+
+### 2. Log in to Firebase
+
+Log in to your Firebase account using the CLI.
+
+```bash
+firebase login
+```
+
+### 3. Deploy the Application
+
+In your project's root directory, run the following command to deploy your app:
+
+```bash
+firebase deploy
+```
+
+The CLI will build your Next.js application and deploy it to Firebase App Hosting.
+
+### 4. Authorize Your Public Domain
+
+This is a critical final step for authentication to work on your live site.
+
+1.  After deployment, the Firebase CLI will give you a public URL for your application. It will look something like `https://infinity-d0fa5.web.app` or `https://infinity-d0fa5.firebaseapp.com`.
+2.  Copy this URL.
+3.  Go to the [Firebase Console](https://console.firebase.google.com/) and open your project.
+4.  Navigate to **Build > Authentication > Settings > Authorized domains**.
+5.  Click **Add domain** and paste the public URL you copied.
+
+Once you add your live app's URL to the authorized domains, anyone will be able to visit your site and sign up or log in.
+
 ## Available Scripts
 
 - `npm run dev`: Starts the development server.
