@@ -154,8 +154,27 @@ export default function Home() {
             }
             setIsAuthDialogOpen(false);
         } catch (error: any) {
-            console.error("Firebase Auth Error:", error);
-            toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
+            console.error("Firebase Auth Error:", error.code, error.message);
+            let description = "An unexpected error occurred. Please try again.";
+            switch (error.code) {
+                case 'auth/weak-password':
+                    description = 'The password is too weak. Please use at least 6 characters.';
+                    break;
+                case 'auth/email-already-in-use':
+                    description = 'This email address is already in use by another account.';
+                    break;
+                case 'auth/invalid-email':
+                    description = 'Please enter a valid email address.';
+                    break;
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    description = 'Invalid email or password. Please try again.';
+                    break;
+                default:
+                    description = error.message;
+            }
+            toast({ title: "Authentication Error", description, variant: "destructive"});
         }
     };
 
@@ -183,8 +202,19 @@ export default function Home() {
             toast({ title: "Success", description: "Logged in with Google successfully!"});
             setIsAuthDialogOpen(false);
         } catch (error: any) {
-            console.error("Google Sign-In Error:", error);
-            toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
+            console.error("Google Sign-In Error:", error.code, error.message);
+            let description = "An unexpected error occurred. Please try again.";
+            switch(error.code) {
+                case 'auth/popup-closed-by-user':
+                    description = 'The sign-in window was closed. Please try again.';
+                    break;
+                case 'auth/account-exists-with-different-credential':
+                    description = 'An account already exists with this email. Please sign in using the original method.';
+                    break;
+                default:
+                    description = error.message;
+            }
+            toast({ title: "Authentication Error", description, variant: "destructive"});
         }
     };
 
