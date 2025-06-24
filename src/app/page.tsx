@@ -5,7 +5,6 @@ import {
   Mic,
   Building,
   Infinity as InfinityIcon,
-  LayoutDashboard,
   Quote
 } from 'lucide-react';
 import Link from 'next/link';
@@ -43,13 +42,6 @@ const features = [
     description: 'An exclusive portal for corporate clients to track projects, manage support, and view their team.',
     href: '/corp-hub',
     cta: 'Access Hub',
-  },
-   {
-    icon: <LayoutDashboard className="h-8 w-8 text-primary" />,
-    title: 'Admin Dashboard',
-    description: 'Manage courses, projects, and view support tickets from a centralized dashboard.',
-    href: '/admin-dashboard',
-    cta: 'Go to Admin',
   },
 ];
 
@@ -99,6 +91,9 @@ export default function Home() {
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
              <nav className="flex items-center space-x-2">
+                <Button variant="outline" asChild>
+                    <Link href="/admin-dashboard">Admin</Link>
+                </Button>
                 <Button variant="ghost" asChild>
                     <Link href="#">Login</Link>
                 </Button>
@@ -162,7 +157,7 @@ export default function Home() {
                         </p>
                     </div>
                 </div>
-                <div className="mx-auto grid items-start gap-8 sm:max-w-4xl sm:grid-cols-2 md:gap-12 lg:max-w-5xl lg:grid-cols-3">
+                <div className="mx-auto grid items-start gap-8 sm:max-w-4xl sm:grid-cols-2 md:gap-12 lg:max-w-5xl lg:grid-cols-4">
                     {features.map((feature) => (
                     <Card key={feature.title} className="flex flex-col overflow-hidden transition-transform duration-300 ease-in-out hover:-translate-y-2 hover:shadow-xl">
                         <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
