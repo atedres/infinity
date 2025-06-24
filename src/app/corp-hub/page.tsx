@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, serverTimestamp, query, where } from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { db, auth } from "@/lib/firebase";
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -44,15 +45,30 @@ interface Ticket {
 
 export default function CorpHubPage() {
     const { toast } = useToast();
+    const [user, setUser] = useState<User | null>(null);
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [newTicketSubject, setNewTicketSubject] = useState('');
     const [newTicketDescription, setNewTicketDescription] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    const fetchTickets = async () => {
+     useEffect(() => {
+        if (!auth) return;
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+            if (currentUser) {
+                fetchTickets(currentUser.uid);
+            } else {
+                setTickets([]);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const fetchTickets = async (userId: string) => {
         if (!db) return;
         try {
-            const querySnapshot = await getDocs(collection(db, "tickets"));
+            const q = query(collection(db, "tickets"), where("userId", "==", userId));
+            const querySnapshot = await getDocs(q);
             const ticketsList = querySnapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
@@ -68,13 +84,12 @@ export default function CorpHubPage() {
         }
     };
 
-    useEffect(() => {
-        fetchTickets();
-    }, []);
-
     const handleNewTicketSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!db) return;
+        if (!db || !user) {
+             toast({ title: "Error", description: "You must be logged in to create a ticket.", variant: "destructive" });
+            return;
+        }
         if(!newTicketSubject || !newTicketDescription) {
             toast({ title: "Error", description: "Please fill all fields.", variant: "destructive" });
             return;
@@ -86,12 +101,14 @@ export default function CorpHubPage() {
                 description: newTicketDescription,
                 status: "Open",
                 lastUpdate: serverTimestamp(),
+                userId: user.uid,
+                userEmail: user.email,
             });
             toast({ title: "Success", description: "Ticket created successfully." });
             setNewTicketSubject('');
             setNewTicketDescription('');
             setIsDialogOpen(false);
-            fetchTickets(); // Refresh list
+            fetchTickets(user.uid); // Refresh list
         } catch (error) {
              console.error("Error creating ticket: ", error);
              toast({ title: "Error", description: "Failed to create ticket.", variant: "destructive" });
@@ -103,7 +120,7 @@ export default function CorpHubPage() {
             <Tabs defaultValue="dashboard" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                    <TabsTrigger value="tickets">Tickets</TabsTrigger>
+                    <TabsTrigger value="tickets" disabled={!user}>Tickets</TabsTrigger>
                     <TabsTrigger value="team">Team</TabsTrigger>
                 </TabsList>
                 <TabsContent value="dashboard" className="mt-6">
@@ -139,7 +156,7 @@ export default function CorpHubPage() {
                            </div>
                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button><PlusCircle className="mr-2 h-4 w-4"/>New Ticket</Button>
+                                    <Button disabled={!user}><PlusCircle className="mr-2 h-4 w-4"/>New Ticket</Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                     <DialogHeader>
@@ -167,33 +184,37 @@ export default function CorpHubPage() {
                            </Dialog>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Ticket ID</TableHead>
-                                        <TableHead>Subject</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Last Update</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {tickets.map(ticket => (
-                                        <TableRow key={ticket.id}>
-                                            <TableCell className="font-mono">{ticket.id.substring(0,6)}...</TableCell>
-                                            <TableCell className="font-medium">{ticket.subject}</TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant={ticket.status === 'Completed' ? 'default' : ticket.status === 'In Progress' ? 'secondary' : 'destructive'}
-                                                    className={ticket.status === 'Completed' ? 'bg-green-500/20 text-green-700' : ticket.status === 'In Progress' ? 'bg-blue-500/20 text-blue-700' : 'bg-yellow-500/20 text-yellow-700'}
-                                                >
-                                                    {ticket.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>{ticket.lastUpdate}</TableCell>
+                             {user ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Ticket ID</TableHead>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Last Update</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {tickets.map(ticket => (
+                                            <TableRow key={ticket.id}>
+                                                <TableCell className="font-mono">{ticket.id.substring(0,6)}...</TableCell>
+                                                <TableCell className="font-medium">{ticket.subject}</TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant={ticket.status === 'Completed' ? 'default' : ticket.status === 'In Progress' ? 'secondary' : 'destructive'}
+                                                        className={ticket.status === 'Completed' ? 'bg-green-500/20 text-green-700' : ticket.status === 'In Progress' ? 'bg-blue-500/20 text-blue-700' : 'bg-yellow-500/20 text-yellow-700'}
+                                                    >
+                                                        {ticket.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>{ticket.lastUpdate}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <p className="text-center text-muted-foreground">Please log in to view your tickets.</p>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

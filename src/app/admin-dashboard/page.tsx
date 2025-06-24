@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SubpageLayout } from "@/components/layout/subpage-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Briefcase, Ticket } from "lucide-react";
-import { collection, addDoc, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, addDoc, getDocs, doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { db, auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 // Types
@@ -39,6 +41,9 @@ interface Ticket {
 
 export default function AdminDashboardPage() {
     const { toast } = useToast();
+    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const [courses, setCourses] = useState<Course[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -53,6 +58,36 @@ export default function AdminDashboardPage() {
     const [projectDescription, setProjectDescription] = useState('');
     const [remuneration, setRemuneration] = useState('');
     const [skills, setSkills] = useState('');
+
+     useEffect(() => {
+        if (!auth || !db) {
+            router.push('/');
+            return;
+        }
+
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists() && userDocSnap.data().is_admin === true) {
+                    setIsAuthorized(true);
+                    fetchCourses();
+                    fetchProjects();
+                    fetchTickets();
+                } else {
+                    toast({ title: "Access Denied", description: "You do not have permission to view this page.", variant: "destructive" });
+                    router.push('/');
+                }
+            } else {
+                toast({ title: "Authentication Required", description: "Please log in to access the admin dashboard.", variant: "destructive" });
+                router.push('/');
+            }
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [router, toast]);
 
 
     const fetchCourses = async () => {
@@ -95,13 +130,6 @@ export default function AdminDashboardPage() {
             console.error("Error fetching tickets: ", error);
         }
     };
-
-    useEffect(() => {
-        if (!db) return;
-        fetchCourses();
-        fetchProjects();
-        fetchTickets();
-    }, []);
 
     const handleAddCourse = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,6 +182,14 @@ export default function AdminDashboardPage() {
             toast({ title: "Error", description: "Failed to add project.", variant: "destructive" });
         }
     };
+
+    if (isLoading) {
+        return <SubpageLayout title="Admin Dashboard"><div className="flex justify-center items-center h-full"><p>Verifying access...</p></div></SubpageLayout>;
+    }
+
+    if (!isAuthorized) {
+        return null;
+    }
 
 
     return (

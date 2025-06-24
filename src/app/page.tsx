@@ -20,9 +20,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, User, signInWithPopup, updateProfile } from "firebase/auth";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db, googleProvider } from "@/lib/firebase";
 
 
 const features = [
@@ -93,6 +96,9 @@ export default function Home() {
     const [authAction, setAuthAction] = useState<'login' | 'signup' | null>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [role, setRole] = useState('');
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
 
     useEffect(() => {
@@ -108,20 +114,41 @@ export default function Home() {
         setIsAuthDialogOpen(true);
         setEmail('');
         setPassword('');
+        setFirstName('');
+        setLastName('');
+        setRole('');
     }
 
     const handleAuthAction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!auth) return;
+        if (!auth || !db) return;
         if (!email || !password) {
             toast({ title: "Error", description: "Email and password are required.", variant: "destructive"});
             return;
         }
+
         try {
             if (authAction === 'signup') {
-                await createUserWithEmailAndPassword(auth, email, password);
+                 if (!firstName || !lastName || !role) {
+                    toast({ title: "Error", description: "Please fill out all fields.", variant: "destructive"});
+                    return;
+                }
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await updateProfile(user, { displayName: `${firstName} ${lastName}` });
+                
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    email: user.email,
+                    firstName,
+                    lastName,
+                    role,
+                    createdAt: serverTimestamp(),
+                    is_admin: false,
+                });
                 toast({ title: "Success", description: "Account created successfully!"});
-            } else {
+
+            } else { // Login
                 await signInWithEmailAndPassword(auth, email, password);
                 toast({ title: "Success", description: "Logged in successfully!"});
             }
@@ -130,6 +157,35 @@ export default function Home() {
             toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
         }
     };
+
+    const handleGoogleSignIn = async () => {
+        if (!auth || !db || !googleProvider) return;
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (!userDocSnap.exists()) {
+                // Create a new user document if it's their first time
+                await setDoc(userDocRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    firstName: user.displayName?.split(' ')[0] || '',
+                    lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                    role: 'Other', // Default role
+                    createdAt: serverTimestamp(),
+                    is_admin: false,
+                });
+            }
+            toast({ title: "Success", description: "Logged in with Google successfully!"});
+            setIsAuthDialogOpen(false);
+        } catch (error: any) {
+            toast({ title: "Authentication Error", description: error.message, variant: "destructive"});
+        }
+    };
+
 
     const handleSignOut = async () => {
         if (!auth) return;
@@ -296,21 +352,64 @@ export default function Home() {
                         {authAction === 'login' ? 'Enter your credentials to access your account.' : 'Create an account to get started.'}
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleAuthAction}>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email" className="text-right">Email</Label>
-                            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+                <div className="space-y-4">
+                     <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+                        <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 21.2 172.9 56.6l-80.1 62.4C309.1 93.3 280.3 80 248 80c-73.2 0-132.3 59.1-132.3 132S174.8 388 248 388c78.2 0 118.9-52.2 123.4-78.2h-123.4v-64.8h232.2c1.7 12.2 2.6 25.3 2.6 39.8z"></path></svg>
+                        {authAction === 'login' ? 'Login with Google' : 'Sign Up with Google'}
+                    </Button>
+
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="password" className="text-right">Password</Label>
-                            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="submit">{authAction === 'login' ? 'Login' : 'Create Account'}</Button>
-                    </DialogFooter>
-                </form>
+
+                    <form onSubmit={handleAuthAction} className="space-y-4">
+                        {authAction === 'signup' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="first-name">First Name</Label>
+                                    <Input id="first-name" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="last-name">Last Name</Label>
+                                    <Input id="last-name" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                        </div>
+                        {authAction === 'signup' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="role">I am a...</Label>
+                                <Select onValueChange={setRole} value={role}>
+                                    <SelectTrigger id="role">
+                                        <SelectValue placeholder="Select your role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Startup Founder">Startup Founder</SelectItem>
+                                        <SelectItem value="Student">Student</SelectItem>
+                                        <SelectItem value="Developer">Developer</SelectItem>
+                                        <SelectItem value="Designer">Designer</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button type="submit" className="w-full">{authAction === 'login' ? 'Login' : 'Create Account'}</Button>
+                        </DialogFooter>
+                    </form>
+                </div>
             </DialogContent>
         </Dialog>
 

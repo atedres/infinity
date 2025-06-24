@@ -1,7 +1,7 @@
 'use client';
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // It's recommended to use environment variables for your Firebase config
 const firebaseConfig = {
@@ -20,9 +20,10 @@ const app = (firebaseConfig.projectId && firebaseConfig.apiKey)
 
 const db = app ? getFirestore(app) : null;
 const auth = app ? getAuth(app) : null;
+const googleProvider = app ? new GoogleAuthProvider() : null;
 
 if (!app && typeof window !== 'undefined') {
     console.warn("Firebase is not configured. Please add your Firebase credentials to a .env.local file. App functionality will be limited.");
 }
 
-export { db, auth };
+export { db, auth, googleProvider };
